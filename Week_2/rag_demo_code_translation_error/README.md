@@ -4,8 +4,8 @@ This is a minimal, local Retrieval-Augmented Generation (RAG) demo.
 ## Prerequisites
 - Ollama installed and running
 - Pull models:
-  - Embeddings: `nomic-embed-text`
-  - Chat: `ministral-3:3b-cloud`
+  - Embeddings: `ollama pull nomic-embed-text`
+  - Chat: `ollama pull ministral-3:3b-cloud`
 
 ## Install Python dependencies
 ```bash
