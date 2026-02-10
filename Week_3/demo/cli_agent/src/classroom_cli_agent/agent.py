@@ -34,10 +34,9 @@ class Agent:
         existing = self.tools.read(module_path)
         raw = self.llm.generate(program_prompt(desc, existing))
         content = strip_code_fences(raw)
-
+        print(content)
         if not content:
             return RunResult(False, "Model returned empty module after sanitization.")
-
         self.tools.write(module_path, content + "\n")
         return RunResult(True, f"Wrote module: {module_path}")
 
@@ -47,10 +46,9 @@ class Agent:
 
         raw = self.llm.generate(tests_prompt(desc, module_path, module_code, existing_tests))
         content = strip_code_fences(raw)
-
+        print(content)
         if not content:
             return RunResult(False, "Model returned empty tests after sanitization.")
-
         self.tools.write(tests_path, content + "\n")
         return RunResult(True, f"Wrote tests: {tests_path}")
 
@@ -58,6 +56,7 @@ class Agent:
         cov_json_path = self.repo / ".coverage.json"
         cmd = f"coverage run -m pytest -q && coverage json -o {cov_json_path.name}"
         ok, out = self.tools.run(cmd)
+        print(ok, out)
         if cov_json_path.exists():
             total, data = parse_coverage_total(cov_json_path)
         else:
@@ -75,7 +74,7 @@ class Agent:
         for i in range(1, max_iters + 1):
             ok, out, total, cov_data = self._run_tests_with_coverage()
             missing = _missing_lines_summary(cov_data, module_path)
-
+            print(ok, out, total, cov_data)
             if ok and total >= target_coverage:
                 return RunResult(
                     True,

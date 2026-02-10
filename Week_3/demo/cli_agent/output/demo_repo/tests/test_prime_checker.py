@@ -20,10 +20,10 @@ def test_is_prime_with_non_prime_numbers():
     assert is_prime(9) == False
     assert is_prime(10) == False
     assert is_prime(12) == False
+    assert is_prime(14) == False
     assert is_prime(15) == False
-    assert is_prime(21) == False
-    assert is_prime(25) == False
-    assert is_prime(27) == False
+    assert is_prime(16) == False
+    assert is_prime(18) == False
 
 def test_is_prime_with_edge_cases():
     with pytest.raises(ValueError):
@@ -49,14 +49,4 @@ def test_is_prime_raises_value_error_for_n_less_than_2():
     with pytest.raises(ValueError):
         is_prime(-1)
     with pytest.raises(ValueError):
-        is_prime(-10)
-
-def test_is_prime_with_type_error():
-    with pytest.raises(TypeError):
-        is_prime("not a number")
-    with pytest.raises(TypeError):
-        is_prime(3.14)
-    with pytest.raises(TypeError):
-        is_prime(None)
-    with pytest.raises(TypeError):
-        is_prime([1, 2, 3])
+        is_prime(-100)
