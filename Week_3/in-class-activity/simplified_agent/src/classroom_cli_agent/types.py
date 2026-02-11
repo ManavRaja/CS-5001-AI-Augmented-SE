@@ -9,7 +9,7 @@ class AgentConfig:
     model: str
     host: str
     temperature: float
-    verbose: bool
+    verbose: bool = False
 
 
 @dataclass(frozen=True)

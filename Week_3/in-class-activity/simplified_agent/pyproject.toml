@@ -4,14 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "classroom-cli-agent"
-version = "0.3.0"
-description = "Ollama-based CLI agent that generates a module and commits/pushes changes"
+version = "0.4.0"
+description = "Ollama-based CLI agent with dynamic prompts for code generation"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["requests>=2.31.0", "langchain-core>=0.2.0"]
+dependencies = [
+    "requests",
+    "langchain",
+    "langchain-core",
+    "pyyaml"
+]
 
 [project.scripts]
 cca = "classroom_cli_agent.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+classroom_cli_agent = ["prompts/*.yaml", "prompts/*.json"]

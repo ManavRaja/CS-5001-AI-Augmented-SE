@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import sys
@@ -15,7 +14,7 @@ from .utils import ensure_repo_path
 
 DEFAULT_MODEL = "devstral-small-2:24b-cloud"
 DEFAULT_HOST = "http://localhost:11434"
-VERSION = "0.3.0"
+VERSION = "0.5.0"
 
 
 def sanitize_name(text: str) -> str:
@@ -23,84 +22,6 @@ def sanitize_name(text: str) -> str:
     text = re.sub(r'[^\w\s-]', '', text.lower())
     text = re.sub(r'[\s-]+', '_', text)
     return text.strip('_')
-
-
-def infer_project_structure(description: str, model: str, host: str) -> dict:
-    """Use LLM to infer project structure from description."""
-    prompt = f"""Given this project description, provide a JSON response with:
-1. A short, descriptive project name (2-4 words, lowercase with underscores)
-2. The appropriate Python module path (e.g., src/app.py, src/calculator.py, src/main.py)
-
-Description: "{description}"
-
-Consider:
-- If it's a Streamlit/web app/dashboard, use src/app.py
-- If it's a specific tool (calculator, prime checker, etc.), name the module accordingly
-- Otherwise use src/main.py
-
-Respond ONLY with valid JSON in this exact format:
-{{"project_name": "name_here", "module_path": "src/file.py"}}"""
-
-    llm = OllamaLLM(model=model, host=host, temperature=0.0)
-    
-    try:
-        response = llm.generate(prompt)
-        # Try to extract JSON from response
-        # Handle case where LLM adds markdown code blocks
-        response = response.strip()
-        if response.startswith('```'):
-            # Extract content between ```json and ```
-            lines = response.split('\n')
-            json_lines = []
-            in_json = False
-            for line in lines:
-                if line.strip().startswith('```'):
-                    if in_json:
-                        break
-                    in_json = True
-                    continue
-                if in_json:
-                    json_lines.append(line)
-            response = '\n'.join(json_lines)
-        
-        result = json.loads(response)
-        
-        # Validate and sanitize
-        project_name = sanitize_name(result.get('project_name', 'project'))
-        module_path = result.get('module_path', 'src/main.py')
-        
-        # Ensure module_path starts with src/ and ends with .py
-        if not module_path.startswith('src/'):
-            module_path = f'src/{module_path}'
-        if not module_path.endswith('.py'):
-            module_path = f'{module_path}.py'
-        
-        return {
-            'project_name': project_name,
-            'module_path': module_path
-        }
-    
-    except (json.JSONDecodeError, KeyError, Exception) as e:
-        # Fallback to simple extraction if LLM fails
-        print(f"⚠️  LLM inference failed ({e}), using fallback...")
-        words = description.lower().split()
-        stop_words = {'a', 'an', 'the', 'with', 'for', 'to', 'in', 'on', 'of', 'and', 'or', 'create', 'make'}
-        key_words = [w for w in words[:4] if w not in stop_words]
-        project_name = '_'.join(key_words) if key_words else 'project'
-        
-        # Simple rule-based fallback
-        desc_lower = description.lower()
-        if 'streamlit' in desc_lower or 'web' in desc_lower or 'dashboard' in desc_lower:
-            module_path = 'src/app.py'
-        elif 'calculator' in desc_lower:
-            module_path = 'src/calculator.py'
-        else:
-            module_path = 'src/main.py'
-        
-        return {
-            'project_name': sanitize_name(project_name),
-            'module_path': module_path
-        }
 
 
 def generate_repo_name(project_name: str) -> str:
@@ -112,24 +33,17 @@ def generate_repo_name(project_name: str) -> str:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="cca",
-        description="Classroom CLI agent - Natural language code generation",
+        description="CLI agent for Code generation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  # Simple - just describe what you want
-  cca create "calculator with basic operations"
-  cca create "streamlit weather dashboard"
-  
-  # With custom repo
-  cca create "todo app" --repo output/my_todo
-  
-  # Commit changes
-  cca commit --repo output/calculator_20240210_120000
-  cca commit --repo output/calculator_20240210_120000 --push
+            Examples:
+            cca create "calculator app"
+            cca create "web scraper" --planning detailed
+            cca commit --repo output/my_project
         """
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
-    p.add_argument("--repo", help="Repository path (auto-generated if not provided)")
+    p.add_argument("--repo", help="Repository path")
     p.add_argument(
         "--model",
         default=os.environ.get("OLLAMA_MODEL", DEFAULT_MODEL),
@@ -150,12 +64,29 @@ Examples:
 
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("create", help="Create or update a module from natural language description")
-    c.add_argument("description", help="What to create (e.g., 'calculator app')")
-    c.add_argument("--module", help="Module path (auto-inferred if not provided)")
+    # Create command
+    c = sub.add_parser("create", help="Create a module")
+    c.add_argument("description", help="What to create")
+    c.add_argument("--module", help="Module path (default: src/main.py)")
+    c.add_argument(
+        "--planning",
+        choices=['default', 'detailed', 'minimal'],
+        default='default',
+        help="Planning prompt variant"
+    )
+    c.add_argument(
+        "--codegen",
+        choices=['default', 'documented', 'minimal'],
+        default='default',
+        help="Code generation prompt variant"
+    )
 
-    cm = sub.add_parser("commit", help="Commit and optionally push changes")
-    cm.add_argument("message", nargs='?', help="Commit message (auto-generated if not provided)")
+    # List prompts command
+    sub.add_parser("list-prompts", help="List all available prompt variants")
+
+    # Commit command
+    cm = sub.add_parser("commit", help="Commit changes")
+    cm.add_argument("message", nargs='?', default="Update project", help="Commit message")
     cm.add_argument("--push", action="store_true", help="Also run git push")
 
     return p
@@ -164,25 +95,38 @@ Examples:
 def run(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     
-    # Handle create command with LLM-powered inference
+    # List prompts command doesn't need repo
+    if args.cmd == "list-prompts":
+        from .prompt_manager import PromptManager
+        pm = PromptManager()
+        tasks = pm.list_available_tasks()
+        
+        print("Available Prompt Tasks and Variants:")
+        print("=" * 60)
+        for task in sorted(tasks):
+            variants = pm.list_variants(task)
+            metadata = pm.get_metadata(task)
+            desc = metadata.get('description', 'No description')
+            print(f"\n{task.upper()}")
+            print(f"  Description: {desc}")
+            print(f"  Variants: {', '.join(variants)}")
+        print()
+        return 0
+    
+    # Handle create command
     if args.cmd == "create":
-        print(f"Analyzing project description with LLM...\n")
+        # Generate project name from description
+        words = args.description.lower().split()
+        stop_words = {'a', 'an', 'the', 'with', 'for', 'to', 'in', 'on', 'of', 'and', 'or'}
+        key_words = [w for w in words[:4] if w not in stop_words]
+        project_name = '_'.join(key_words) if key_words else 'project'
         
-        # Use LLM to infer project structure
-        structure = infer_project_structure(
-            args.description, 
-            args.model,
-            args.host
-        )
-        
-        # Auto-generate repo if not provided
         if not args.repo:
-            args.repo = generate_repo_name(structure['project_name'])
+            args.repo = generate_repo_name(sanitize_name(project_name))
             print(f"Repository: {args.repo}")
         
-        # Auto-infer module if not provided
         if not args.module:
-            args.module = structure['module_path']
+            args.module = 'src/main.py'
             print(f"Module: {args.module}")
         
         # Initialize git repo
@@ -195,22 +139,18 @@ def run(argv: list[str] | None = None) -> int:
                 subprocess.run(['git', 'init'], cwd=repo_path, capture_output=True)
                 print(f"Initialized git repository")
         
-        print(f"\n{'='*60}")
-        print(f"Creating: {args.description}")
-        print(f"{'='*60}\n")
+        print(f"\nCreating: {args.description}")
+        print(f"Planning: {args.planning}, Code gen: {args.codegen}\n")
     
     # Handle commit command
     if args.cmd == "commit":
         if not args.repo:
             print("Error: --repo is required for commit command", file=sys.stderr)
             return 1
-        
-        # Auto-generate commit message if not provided
-        if not args.message:
-            args.message = "Update project"
-            print(f"💬 Auto-generating commit message: {args.message}")
     
-    ensure_repo_path(args.repo)
+    # Ensure repo exists for commands that need it
+    if args.cmd in ["create", "commit"]:
+        ensure_repo_path(args.repo)
 
     cfg = AgentConfig(
         repo=args.repo,
@@ -220,23 +160,23 @@ def run(argv: list[str] | None = None) -> int:
         verbose=args.verbose,
     )
     agent = Agent(cfg)
+    
+    # Set variants if create command
+    if args.cmd == "create":
+        agent.planning_variant = args.planning
+        agent.code_gen_variant = args.codegen
 
     try:
         if args.cmd == "create":
             r = agent.create_program(args.description, args.module)
-        else:  # commit
+        elif args.cmd == "commit":
             r = agent.commit_and_push(args.message, args.push)
+        else:
+            print(f"Unknown command: {args.cmd}", file=sys.stderr)
+            return 1
 
         stream = sys.stdout if r.ok else sys.stderr
         print(r.details, file=stream)
-        
-        # Show next steps for create command
-        if args.cmd == "create" and r.ok:
-            print(f"\n{'='*60}")
-            print(f"Success! Next steps:")
-            print(f"1. Review code: {args.repo}/{args.module}")
-            print(f"2. Commit: cca commit --repo {args.repo}")
-            print(f"{'='*60}\n")
         
         return 0 if r.ok else 1
     except KeyboardInterrupt:
@@ -248,6 +188,10 @@ def run(argv: list[str] | None = None) -> int:
 
 
 def main() -> None:
+    # If the user runs `cca` with no arguments, open an interactive session.
+    if len(sys.argv) == 1:
+        from .interactive import repl
+        raise SystemExit(repl())
     raise SystemExit(run())
 
 

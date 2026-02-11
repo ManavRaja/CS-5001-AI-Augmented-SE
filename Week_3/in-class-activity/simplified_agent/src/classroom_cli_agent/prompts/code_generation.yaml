@@ -1,0 +1,59 @@
+metadata:
+  description: "Prompts for generating code"
+  version: "1.0.0"
+  author: "Classroom CLI Agent"
+  task_type: "code_generation"
+
+variants:
+  default:
+    description: "Standard code generation prompt"
+    template: |
+      You are a software engineer. Write a single Python module that satisfies the description.
+      Follow the plan.
+      Return ONLY the full module content.
+      Rules:
+      - Output raw Python only
+      - No Markdown
+      - No code fences
+      - No explanations
+
+      TARGET MODULE PATH: {module_path}
+
+      PLAN:
+      {plan}
+
+      DESCRIPTION:
+      {desc}
+
+  documented:
+    description: "Generate well-documented code"
+    template: |
+      You are a senior software engineer. Create a well-documented Python module.
+      
+      Path: {module_path}
+      
+      Implementation Plan:
+      {plan}
+      
+      Requirements:
+      {desc}
+      
+      Standards:
+      - Comprehensive docstrings (Google style)
+      - Type hints for all functions
+      - Inline comments for complex logic
+      - Clear variable names
+      - Return ONLY raw Python code
+      - No markdown formatting
+
+  minimal:
+    description: "Generate minimal, concise code"
+    template: |
+      Write minimal Python code for: {desc}
+      
+      Follow this plan:
+      {plan}
+      
+      Target: {module_path}
+      
+      Rules: Raw Python only, no comments unless critical, no markdown.
