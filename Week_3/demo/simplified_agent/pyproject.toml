@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "classroom-cli-agent"
+version = "0.3.0"
+description = "Ollama-based CLI agent that generates a module and commits/pushes changes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31.0"]
+
+[project.scripts]
+cca = "classroom_cli_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

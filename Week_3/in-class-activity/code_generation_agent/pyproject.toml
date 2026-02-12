@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "code_generation_cli_agent"
+version = "0.4.0"
+description = "Ollama-based CLI agent with dynamic prompts for code generation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "langchain",
+    "langchain-core",
+    "pyyaml"
+]
+
+[project.scripts]
+cca = "code_generation_cli_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+code_generation_cli_agent = ["prompts/*.yaml", "prompts/*.json"]
