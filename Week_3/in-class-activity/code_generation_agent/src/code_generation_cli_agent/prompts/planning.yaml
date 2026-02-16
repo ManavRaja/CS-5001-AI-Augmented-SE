@@ -1,53 +1,102 @@
 metadata:
   description: "Prompts for creating implementation plans"
-  version: "1.0.0"
+  version: "3.0.0"
   author: "Classroom CLI Agent"
   task_type: "planning"
 
 variants:
   default:
-    description: "Standard planning prompt for code generation"
+    description: "Standard planning with Persona + Decomposition patterns"
     template: |
-      You are a senior software engineer. Create a short, actionable implementation plan with ordered steps.
-      
+      You are a senior Python engineer with 10+ years of experience building production-grade applications. You prioritize clean project structure, modular design, and maintainable code.
+
+      Your task is to create an implementation plan for a complete project. Follow these decomposition steps exactly:
+
+      STEP 1 - REQUIREMENTS ANALYSIS:
+      Identify the core functionality, inputs, outputs, and external dependencies.
+
+      STEP 2 - MODULE DECOMPOSITION:
+      Break the project into modules with single responsibilities. Each module should do one thing well.
+
+      STEP 3 - FILE STRUCTURE:
+      List every file to create with its purpose. At minimum include:
+      - README.md (setup and usage instructions)
+      - requirements.txt (if external packages are needed)
+      - Main source files with clear separation of concerns
+
+      STEP 4 - INTERFACE DESIGN:
+      For each source file, outline the key functions/classes and their signatures.
+
+      STEP 5 - DEPENDENCY MAPPING:
+      List all external packages needed and which files import them. Prefer standard library when possible.
+
       Constraints:
-      - Keep the solution minimal and readable
-      - Assume standard library only unless the description requires otherwise
       - Do not write code yet
       - Output plain text only
-
-      TARGET MODULE PATH: {module_path}
+      - Do not include conversational filler or questions
 
       DESCRIPTION:
       {desc}
 
   detailed:
-    description: "More detailed planning with architecture considerations"
+    description: "Architecture-focused planning with full decomposition"
     template: |
-      You are a senior software architect. Create a comprehensive implementation plan.
-      
-      TARGET MODULE PATH: {module_path}
-      
-      REQUIREMENTS:
+      You are a senior software architect who designs scalable, well-documented Python systems. You have deep expertise in design patterns, separation of concerns, and writing code that other engineers can easily understand and extend.
+
+      Create a comprehensive implementation plan by following these decomposition steps:
+
+      STEP 1 - REQUIREMENTS ANALYSIS:
+      - What is the core problem being solved?
+      - What are the functional requirements?
+      - What are the non-functional requirements (performance, security, etc.)?
+
+      STEP 2 - ARCHITECTURE OVERVIEW:
+      - What architectural pattern fits best (MVC, layered, modular)?
+      - How do components communicate?
+
+      STEP 3 - MODULE DECOMPOSITION:
+      - Break into modules with single responsibilities
+      - Define clear interfaces between modules
+
+      STEP 4 - FILE STRUCTURE:
+      List every file with its purpose. Include:
+      - README.md, requirements.txt
+      - Source files organized by responsibility
+      - Test files for critical logic
+
+      STEP 5 - DETAILED DESIGN:
+      For each file:
+      - Key classes/functions with signatures
+      - Data structures used
+      - Error handling strategy
+
+      STEP 6 - DEPENDENCY ANALYSIS:
+      - External packages and versions
+      - Standard library modules used
+
+      STEP 7 - EDGE CASES:
+      - Input validation scenarios
+      - Error conditions to handle
+
+      Constraints:
+      - Do not write code
+      - Output as structured plain text
+      - No conversational filler
+
+      DESCRIPTION:
       {desc}
-      
-      Your plan should include:
-      1. Architecture overview
-      2. Key components and their responsibilities
-      3. Data structures needed
-      4. Function signatures
-      5. Dependencies (prefer standard library)
-      6. Edge cases to handle
-      7. Testing considerations
-      
-      Output as numbered steps in plain text.
 
   minimal:
     description: "Quick planning for simple tasks"
     template: |
-      Create a brief plan (3-5 steps) for implementing:
+      You are a pragmatic Python developer who values simplicity.
+
+      Create a brief plan (3-5 steps) for:
       {desc}
-      
-      Target file: {module_path}
-      
-      Keep it simple and actionable.
+
+      Include:
+      1. List of files to create (minimum: main source file, README.md)
+      2. Key functions/classes per file
+      3. External dependencies (if any)
+
+      Keep it concise. No conversational filler.

@@ -26,6 +26,14 @@ class Tools:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
 
+    def write_multiple(self, files: dict[str, str]) -> list[str]:
+        """Write multiple files at once. Returns list of paths written."""
+        written = []
+        for rel_path, content in files.items():
+            self.write(rel_path, content)
+            written.append(rel_path)
+        return written
+
     def run(self, cmd: str, timeout_s: int = 600) -> Tuple[bool, str]:
         proc = subprocess.run(
             cmd,

@@ -7,7 +7,7 @@ from .llm import OllamaLLM
 from .prompt_manager import PromptManager
 from .tools import Tools
 from .types import AgentConfig, RunResult
-from .utils import strip_code_fences
+from .utils import parse_multi_file_output, strip_code_fences
 
 class Agent:
     def __init__(self, cfg: AgentConfig):
@@ -75,6 +75,15 @@ class Agent:
         self._log(p2)
         draft_raw = run(p2)
         self._log(draft_raw)
+
+        # Try multi-file parsing first
+        files = parse_multi_file_output(draft_raw)
+        if files:
+            written = self.tools.write_multiple(files)
+            listing = "\n".join(f"  - {p}" for p in written)
+            return RunResult(True, f"Wrote {len(written)} files:\n{listing}")
+
+        # Fallback: single-file mode
         draft = strip_code_fences(draft_raw)
         if not draft.strip():
             return RunResult(False, "Model returned empty module draft.")

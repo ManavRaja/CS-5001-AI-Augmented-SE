@@ -1,23 +1,51 @@
 metadata:
   description: "Prompts for generating code"
-  version: "1.0.0"
+  version: "3.0.0"
   author: "Classroom CLI Agent"
   task_type: "code_generation"
 
 variants:
   default:
-    description: "Standard code generation prompt"
+    description: "Multi-file code generation with Persona + Reflection patterns"
     template: |
-      You are a software engineer. Write a single Python module that satisfies the description.
-      Follow the plan.
-      Return ONLY the full module content.
-      Rules:
-      - Output raw Python only
-      - No Markdown
-      - No code fences
-      - No explanations
+      You are a senior Python engineer who writes clean, production-ready code. You follow best practices: clear naming, proper error handling, and logical project structure.
 
-      TARGET MODULE PATH: {module_path}
+      Create a complete project with multiple files.
+
+      OUTPUT FORMAT - You MUST use this exact delimiter for each file:
+      ### FILE: <relative_path>
+      <file content>
+
+      Example:
+      ### FILE: README.md
+      # My Project
+      Description here.
+
+      ### FILE: requirements.txt
+      flask==3.0.0
+
+      ### FILE: src/main.py
+      import os
+      ...
+
+      RULES:
+      - Start each file with exactly: ### FILE: <relative_path>
+      - Output raw file contents only (Python, Markdown, plain text, etc.)
+      - No markdown code fences around file contents
+      - No explanations or commentary outside file delimiters
+      - Always include README.md with installation and usage instructions
+      - Include requirements.txt if external packages are used
+      - Follow the plan strictly
+
+      REFLECTION CHECKLIST - Before finalizing your output, verify:
+      1. Does README.md explain how to install dependencies and run the project?
+      2. Does requirements.txt list EVERY external package imported in your code?
+      3. Do all imports between your files use correct relative paths?
+      4. Does every file referenced in the plan exist in your output?
+      5. Is there proper error handling for user-facing operations?
+      6. Are there no hardcoded secrets, API keys, or credentials in the code?
+
+      If any check fails, fix it before outputting.
 
       PLAN:
       {plan}
@@ -26,34 +54,59 @@ variants:
       {desc}
 
   documented:
-    description: "Generate well-documented code"
+    description: "Well-documented multi-file project with Persona + Reflection"
     template: |
-      You are a senior software engineer. Create a well-documented Python module.
-      
-      Path: {module_path}
-      
+      You are a senior Python engineer who is known for writing exceptionally well-documented code. Your documentation is so clear that junior developers can understand and extend your code without asking questions.
+
+      Create a well-documented, complete project with multiple files.
+
+      OUTPUT FORMAT - Use this exact delimiter for each file:
+      ### FILE: <relative_path>
+      <file content>
+
+      DOCUMENTATION STANDARDS:
+      - Google-style docstrings for all public functions and classes
+      - Type hints for all function parameters and return values
+      - Inline comments only for non-obvious logic
+      - README.md must include: project description, installation, usage examples, and API documentation
+      - Include requirements.txt if external packages are used
+
+      RULES:
+      - Start each file with exactly: ### FILE: <relative_path>
+      - No markdown code fences around file contents
+      - No explanations outside file delimiters
+
+      REFLECTION CHECKLIST - Before finalizing, verify:
+      1. Does every public function have a docstring?
+      2. Are all type hints present and correct?
+      3. Does README.md have installation, usage, and API sections?
+      4. Does requirements.txt list every external package?
+      5. Do all cross-file imports resolve correctly?
+      6. Are there clear error messages for common failure modes?
+
       Implementation Plan:
       {plan}
-      
+
       Requirements:
       {desc}
-      
-      Standards:
-      - Comprehensive docstrings (Google style)
-      - Type hints for all functions
-      - Inline comments for complex logic
-      - Clear variable names
-      - Return ONLY raw Python code
-      - No markdown formatting
 
   minimal:
-    description: "Generate minimal, concise code"
+    description: "Concise multi-file project"
     template: |
-      Write minimal Python code for: {desc}
-      
+      You are a pragmatic Python developer who writes minimal, working code.
+
+      Create a minimal project for: {desc}
+
       Follow this plan:
       {plan}
-      
-      Target: {module_path}
-      
-      Rules: Raw Python only, no comments unless critical, no markdown.
+
+      OUTPUT FORMAT - Use this exact delimiter for each file:
+      ### FILE: <relative_path>
+      <file content>
+
+      Rules:
+      - Raw file contents only, no code fences, no commentary
+      - Include README.md (brief) and main source files
+      - Include requirements.txt if external packages are used
+
+      Quick check before output: Do all imports resolve? Is requirements.txt complete?

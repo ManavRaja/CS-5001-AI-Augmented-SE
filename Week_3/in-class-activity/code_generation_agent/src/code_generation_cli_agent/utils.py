@@ -31,3 +31,37 @@ def strip_code_fences(text: str) -> str:
         lines = lines[:-1]
 
     return "\n".join(lines).strip()
+
+
+def parse_multi_file_output(text: str) -> dict[str, str]:
+    """Parse LLM output containing multiple files delimited by ### FILE: markers.
+
+    Expected format:
+        ### FILE: path/to/file.py
+        <content>
+
+        ### FILE: another/file.md
+        <content>
+
+    Returns dict mapping relative file paths to their contents.
+    Returns empty dict if no FILE markers are found.
+    """
+    if not text:
+        return {}
+
+    # Split on ### FILE: <path> lines
+    parts = re.split(r"^###\s*FILE:\s*(.+?)\s*$", text, flags=re.MULTILINE)
+
+    # parts[0] is text before the first marker (discard) then alternating by path and content
+    if len(parts) < 3:
+        return {}
+
+    files: dict[str, str] = {}
+    for i in range(1, len(parts), 2):
+        path = parts[i].strip()
+        content = parts[i + 1] if i + 1 < len(parts) else ""
+        content = strip_code_fences(content).rstrip() + "\n"
+        if path and content.strip():
+            files[path] = content
+
+    return files
