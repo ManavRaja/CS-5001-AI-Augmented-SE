@@ -769,6 +769,10 @@ textarea.reply-ta:focus { outline: none; border-color: var(--teal); background: 
       <span class="nav-icon">🐙</span> GitHub
       <span class="nav-chip" id="gh-chip">0</span>
     </div>
+    <div class="nav-item" onclick="showView('canvas',this)">
+      <span class="nav-icon">📚</span> Canvas
+      <span class="nav-chip" id="cv-chip">0</span>
+    </div>
 
     <div class="nav-section">Intelligence</div>
     <div class="nav-item" onclick="showView('memory',this)">
@@ -905,6 +909,7 @@ textarea.reply-ta:focus { outline: none; border-color: var(--teal); background: 
               <div class="sys-row"><span class="sys-lbl">Ollama</span><span id="sys-ollama" class="sys-val neu">—</span></div>
               <div class="sys-row"><span class="sys-lbl">Hotmail Auth</span><span id="sys-hm" class="sys-val neu">—</span></div>
               <div class="sys-row"><span class="sys-lbl">GitHub Auth</span><span id="sys-gh" class="sys-val neu">—</span></div>
+              <div class="sys-row"><span class="sys-lbl">Canvas Auth</span><span id="sys-cv" class="sys-val neu">—</span></div>
               <div class="sys-row"><span class="sys-lbl">Dry Run</span><span id="sys-dry" class="sys-val warn">—</span></div>
               <div class="sys-row"><span class="sys-lbl">Poll Every</span><span id="sys-poll" class="sys-val neu">—</span></div>
             </div>
@@ -946,6 +951,45 @@ textarea.reply-ta:focus { outline: none; border-color: var(--teal); background: 
         <div class="panel">
           <div class="panel-body" style="padding-top:8px;">
             <div id="all-notifs"><div class="empty"><div class="empty-ico">🐙</div><div class="empty-txt">No notifications processed yet</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CANVAS ══ -->
+    <div class="view" id="view-canvas">
+      <div class="section-head">
+        <div class="section-title">Canvas LMS</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="gh-tabs">
+            <button id="cvtb-courses" class="gh-tab-btn active" onclick="showCvTab('courses')">📚 Courses</button>
+            <button id="cvtb-convos"  class="gh-tab-btn"        onclick="showCvTab('convos')">💬 Conversations</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="loadCanvas()">↺ Refresh</button>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-head"><div class="panel-title">Canvas Gateway Status</div></div>
+        <div class="panel-body" style="padding-top:4px;">
+          <div class="sys-row"><span class="sys-lbl">Auth</span><span id="cv-auth" class="sys-val neu">—</span></div>
+          <div class="sys-row"><span class="sys-lbl">Auto Reply</span><span id="cv-auto" class="sys-val neu">—</span></div>
+          <div class="sys-row"><span class="sys-lbl">Poll Every</span><span id="cv-poll" class="sys-val neu">—</span></div>
+          <div class="sys-row"><span class="sys-lbl">Dry Run</span><span id="cv-dry" class="sys-val neu">—</span></div>
+          <div class="sys-row"><span class="sys-lbl">Base URL</span><span id="cv-url" class="sys-val neu" style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">—</span></div>
+        </div>
+      </div>
+      <!-- Courses pane -->
+      <div id="cv-pane-courses">
+        <div id="cv-courses-grid" class="repo-grid">
+          <div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">Loading courses…</div></div>
+        </div>
+        <div id="cv-activity-panel"></div>
+      </div>
+      <!-- Conversations pane -->
+      <div id="cv-pane-convos" style="display:none;">
+        <div class="panel">
+          <div class="panel-body" style="padding-top:8px;">
+            <div id="cv-all-convos"><div class="empty"><div class="empty-ico">💬</div><div class="empty-txt">No conversations processed yet</div></div></div>
           </div>
         </div>
       </div>
@@ -1117,7 +1161,7 @@ function toast(msg, ms = 2800) {
 }
 
 // ── NAV ───────────────────────────────────────────────────────────────────────
-const TITLES = { dashboard:'Dashboard', emails:'Emails', github:'GitHub', memory:'Memory', cron:'Cron Jobs', logs:'Logs', settings:'Settings' };
+const TITLES = { dashboard:'Dashboard', emails:'Emails', github:'GitHub', canvas:'Canvas LMS', memory:'Memory', cron:'Cron Jobs', logs:'Logs', settings:'Settings' };
 
 function showView(id, el) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1127,6 +1171,7 @@ function showView(id, el) {
   document.getElementById('page-title').textContent = TITLES[id] || id;
   if (id === 'emails')   loadEmails();
   if (id === 'github')   loadGitHub();
+  if (id === 'canvas')   loadCanvas();
   if (id === 'memory')   loadMemory();
   if (id === 'logs')     loadLogs();
   if (id === 'cron')     renderCron(_status?.cron_jobs);
@@ -1313,6 +1358,7 @@ function closeModal() {
   document.getElementById('modal').classList.remove('open');
   _curEmail = null;
   _curNotif = null;
+  _curConvo = null;
 }
 
 document.getElementById('modal').addEventListener('click', e => {
@@ -1334,7 +1380,16 @@ async function sendReply() {
   const btn = document.getElementById('send-btn');
   btn.textContent = 'Sending…'; btn.disabled = true;
 
-  if (_curNotif) {
+  if (_curConvo) {
+    // Canvas path
+    const res = await apiCv('/reply', {
+      method: 'POST',
+      body: JSON.stringify({ convo_id: _curConvo.convo_id, reply_text: reply }),
+    });
+    btn.textContent = 'Send Reply →'; btn.disabled = false;
+    if (res?.ok) { toast('✅ Canvas reply posted!'); closeModal(); loadConvos(); }
+    else toast('❌ Failed to post reply — check auto_reply / dry run mode.');
+  } else if (_curNotif) {
     // GitHub path
     if (!_curNotif.comments_url) {
       btn.textContent = 'Send Reply →'; btn.disabled = false;
@@ -1657,15 +1712,228 @@ async function openNotif(n) {
   }
 }
 
+// ── CANVAS ───────────────────────────────────────────────────────────────────
+const API_CV = 'http://127.0.0.1:5002/api';
+let _curConvo   = null;
+let _activeCourse = null;
+
+async function apiCv(path, opts = {}) {
+  try {
+    const r = await fetch(API_CV + path, { headers:{'Content-Type':'application/json'}, ...opts });
+    return r.json();
+  } catch { return null; }
+}
+
+async function pollCvStatus() {
+  const d = await apiCv('/status');
+  if (!d) {
+    setVal('sys-cv',  'Offline', 'err');
+    setVal('cv-auth', 'Offline', 'err');
+    return;
+  }
+  const authOk = d.canvas === 'ok';
+  setVal('sys-cv',  authOk ? 'Authenticated' : 'Error', authOk ? 'ok' : 'err');
+  setVal('cv-auth', authOk ? 'Authenticated' : 'Error', authOk ? 'ok' : 'err');
+  setVal('cv-auto', d.auto_reply ? 'Enabled' : 'Disabled', d.auto_reply ? 'ok' : 'warn');
+  setVal('cv-dry',  d.dry_run    ? 'Enabled' : 'Disabled', d.dry_run    ? 'warn' : 'ok');
+  const pollEl = document.getElementById('cv-poll');
+  if (pollEl) { pollEl.textContent = `${d.poll_interval}s`; pollEl.className = 'sys-val neu'; }
+  const urlEl = document.getElementById('cv-url');
+  if (urlEl) { urlEl.textContent = d.base_url || '—'; urlEl.className = 'sys-val neu'; }
+}
+
+function showCvTab(tab) {
+  document.getElementById('cv-pane-courses').style.display = tab === 'courses' ? '' : 'none';
+  document.getElementById('cv-pane-convos').style.display  = tab === 'convos'  ? '' : 'none';
+  document.getElementById('cvtb-courses').classList.toggle('active', tab === 'courses');
+  document.getElementById('cvtb-convos').classList.toggle('active',  tab === 'convos');
+  if (tab === 'courses') loadCourses();
+  if (tab === 'convos')  loadConvos();
+}
+
+// ── COURSE CARDS ─────────────────────────────────────────────────────────────
+const ENROLL_LABELS = {
+  StudentEnrollment: { label:'Student', color:'var(--blue)' },
+  TeacherEnrollment: { label:'Teacher', color:'var(--teal)' },
+  TaEnrollment:      { label:'TA',      color:'var(--amber)' },
+  DesignerEnrollment:{ label:'Designer',color:'var(--text3)' },
+};
+
+function courseCard(c) {
+  const enroll = ENROLL_LABELS[c.enrollment_type] || { label: c.enrollment_type || 'Enrolled', color:'var(--text3)' };
+  const endDate = c.end_at ? `<span class="repo-stat">ends ${fmtT(c.end_at)}</span>` : '';
+  const id = 'cc-' + c.id;
+  return `<div class="repo-card" id="${id}" onclick="loadCourseActivity(${c.id}, '${c.name.replace(/'/g,"&#39;")}')">
+    <div class="repo-name">📚 ${c.name}</div>
+    <div class="repo-desc" style="color:var(--text3);font-family:var(--mono);font-size:11px;">${c.course_code || ''}</div>
+    <div class="repo-meta">
+      <span class="repo-stat" style="color:${enroll.color};font-weight:600;">${enroll.label}</span>
+      ${endDate}
+    </div>
+  </div>`;
+}
+
+async function loadCourses() {
+  const grid = document.getElementById('cv-courses-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-txt">Loading courses…</div></div>';
+  const courses = await apiCv('/courses');
+  if (!courses || courses.error) {
+    grid.innerHTML = '<div class="empty"><div class="empty-ico">🔴</div><div class="empty-txt">Canvas gateway offline — run python canvas_gateway.py</div></div>';
+    return;
+  }
+  grid.innerHTML = courses.length
+    ? courses.map(courseCard).join('')
+    : '<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">No active courses found</div></div>';
+}
+
+async function loadCourseActivity(courseId, courseName) {
+  const panel = document.getElementById('cv-activity-panel');
+  if (_activeCourse === courseId) {
+    _activeCourse = null;
+    panel.innerHTML = '';
+    document.querySelectorAll('.repo-card').forEach(c => c.classList.remove('active'));
+    return;
+  }
+  _activeCourse = courseId;
+  document.querySelectorAll('.repo-card').forEach(c => c.classList.remove('active'));
+  const cardEl = document.getElementById('cc-' + courseId);
+  if (cardEl) cardEl.classList.add('active');
+  panel.innerHTML = '<div class="empty" style="padding:16px"><div class="empty-ico">⏳</div><div class="empty-txt">Loading course activity…</div></div>';
+
+  const data = await apiCv(`/course/${courseId}/activity`);
+  if (!data || data.error) {
+    panel.innerHTML = `<div class="empty"><div class="empty-ico">❌</div><div class="empty-txt">${data?.error || 'Failed to load activity'}</div></div>`;
+    return;
+  }
+
+  const noItem = txt => `<div class="activity-item" style="color:var(--text3);text-align:center;padding:14px">${txt}</div>`;
+
+  const annRows = (data.announcements || []).map(a =>
+    `<div class="activity-item">
+      <div class="activity-item-title">📢 ${a.title}</div>
+      <div class="activity-item-meta">
+        ${a.author ? `<span>👤 ${a.author}</span>` : ''}
+        ${a.message ? `<span style="color:var(--text2)">${a.message}</span>` : ''}
+        <span style="margin-left:auto">${fmtT(a.posted_at)}</span>
+      </div>
+    </div>`).join('') || noItem('No announcements');
+
+  const discRows = (data.discussions || []).map(d =>
+    `<div class="activity-item">
+      <div class="activity-item-title">💬 ${d.title}</div>
+      <div class="activity-item-meta">
+        ${d.replies_count ? `<span>💬 ${d.replies_count} replies</span>` : ''}
+        ${d.message ? `<span style="color:var(--text2)">${d.message}</span>` : ''}
+        <span style="margin-left:auto">${fmtT(d.posted_at)}</span>
+      </div>
+    </div>`).join('') || noItem('No discussions');
+
+  const asnRows = (data.assignments || []).map(a => {
+    const pts = a.points_possible != null ? `${a.points_possible} pts` : '';
+    const types = (a.submission_types || []).join(', ');
+    return `<div class="activity-item">
+      <div class="activity-item-title">📝 ${a.name}</div>
+      <div class="activity-item-meta">
+        ${pts ? `<span>${pts}</span>` : ''}
+        ${types ? `<span>${types}</span>` : ''}
+        <span style="margin-left:auto;color:${a.due_at ? 'var(--amber)' : 'inherit'}">due ${fmtT(a.due_at) || '—'}</span>
+      </div>
+    </div>`;
+  }).join('') || noItem('No upcoming assignments ✓');
+
+  panel.innerHTML = `
+    <div class="activity-panel">
+      <div class="activity-head">
+        <span>📢 Announcements (${(data.announcements || []).length})</span>
+        <span style="color:var(--text3);font-weight:400;cursor:pointer;font-size:15px" onclick="loadCourseActivity(${courseId},'')">✕</span>
+      </div>
+      <div class="activity-list">${annRows}</div>
+    </div>
+    <div class="activity-panel">
+      <div class="activity-head">💬 Discussions (${(data.discussions || []).length})</div>
+      <div class="activity-list">${discRows}</div>
+    </div>
+    <div class="activity-panel">
+      <div class="activity-head">📝 Upcoming Assignments (${(data.assignments || []).length})</div>
+      <div class="activity-list">${asnRows}</div>
+    </div>`;
+}
+
+// ── CONVERSATIONS ─────────────────────────────────────────────────────────────
+function convoRow(c) {
+  const bg  = avatarBg(c.from || '');
+  const ltr = (c.name || c.from || '?')[0].toUpperCase();
+  return `<div class="email-row" onclick='openConvo(${JSON.stringify(c).replace(/'/g,"&#39;")})'>
+    <div class="email-av" style="background:${bg}">${ltr}</div>
+    <div class="email-info">
+      <div class="email-from">${c.name || c.from || '—'}${c.course ? ` <span style="color:var(--text3);font-weight:400">· ${c.course}</span>` : ''}</div>
+      <div class="email-subj">${c.subject || '(no subject)'}</div>
+    </div>
+    <div class="email-meta">
+      <div class="email-time">${fmtT(c.recorded_at)}</div>
+      <div class="tag ${c.status || 'read'}">Canvas</div>
+    </div>
+  </div>`;
+}
+
+async function loadConvos() {
+  const el = document.getElementById('cv-all-convos');
+  if (!el) return;
+  const convos = await apiCv('/conversations?limit=50');
+  if (!convos) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🔴</div><div class="empty-txt">Canvas gateway offline — run python canvas_gateway.py</div></div>';
+    return;
+  }
+  el.innerHTML = convos.length
+    ? convos.map(convoRow).join('')
+    : '<div class="empty"><div class="empty-ico">💬</div><div class="empty-txt">No conversations processed yet</div></div>';
+  document.getElementById('cv-chip').textContent = convos.length;
+}
+
+async function loadCanvas() {
+  const coursesVisible = document.getElementById('cv-pane-courses')?.style.display !== 'none';
+  if (coursesVisible) loadCourses();
+  else loadConvos();
+}
+
+async function openConvo(c) {
+  _curConvo  = c;
+  _curEmail  = null;
+  _curNotif  = null;
+  document.getElementById('m-subj').textContent = c.subject || '(no subject)';
+  document.getElementById('m-from').textContent = c.course ? `${c.name || c.from} · ${c.course}` : (c.name || c.from || '—');
+  document.getElementById('m-time').textContent = c.received ? new Date(c.received).toLocaleString() : '—';
+  document.getElementById('m-body').textContent = c.body || '(no message body)';
+  document.getElementById('m-reply').value = c.reply || '';
+  document.getElementById('modal').classList.add('open');
+
+  if (!c.reply) {
+    if (!c.body) {
+      document.getElementById('m-reply').placeholder = 'No message body — cannot generate reply.';
+      return;
+    }
+    document.getElementById('m-reply').placeholder = 'Generating reply…';
+    const res = await apiCv('/generate_reply', {
+      method: 'POST',
+      body: JSON.stringify({ from: c.from, subject: c.subject, body: c.body, course: c.course }),
+    });
+    if (res?.reply) typewriter(document.getElementById('m-reply'), res.reply);
+    else document.getElementById('m-reply').placeholder = 'Could not generate reply — check Ollama.';
+  }
+}
+
 // ── BOOT ─────────────────────────────────────────────────────────────────────
 async function boot() {
   await pollStatus();
   await pollGhStatus();
+  await pollCvStatus();
   await loadDashboard();
 }
 boot();
 setInterval(pollStatus,    10_000);
 setInterval(pollGhStatus,  15_000);
+setInterval(pollCvStatus,  15_000);
 setInterval(loadDashboard, 30_000);
 </script>
 </body>

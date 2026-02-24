@@ -32,10 +32,23 @@ MEMORY_FILE = "memory.json"           # where LocalClaw stores persistent memory
 MAX_LOG_LINES = 200                   # max log lines kept in memory
 
 # ── GitHub ────────────────────────────────────────────────────────────────────
-# Token is NOT stored here — it is prompted once and cached in OS keychain.
+# Get your PAT: https://github.com/settings/tokens/new  (scopes: notifications + repo)
+# Paste it below OR leave blank — you will be prompted once and it will be cached in keychain.
+GITHUB_TOKEN         = ""             # paste your GitHub Personal Access Token here
 GITHUB_USERNAME      = ""  # your GitHub username
 GITHUB_POLL_INTERVAL = 60             # seconds (GitHub recommends >= 60s)
 GITHUB_AUTO_REPLY    = False          # True = post AI comments automatically
 GITHUB_GATEWAY_HOST  = "127.0.0.1"
 GITHUB_GATEWAY_PORT  = 5001
 GITHUB_GATEWAY_DEBUG = False
+
+# ── Canvas LMS ────────────────────────────────────────────────────────────────
+# Get your token: Canvas → Account → Settings → scroll to "Approved Integrations" → New Access Token
+# Paste it below OR leave blank — you will be prompted once and it will be cached in keychain.
+CANVAS_TOKEN         = ""             # paste your Canvas API token here
+CANVAS_BASE_URL      = ""  # your Canvas instance URL
+CANVAS_POLL_INTERVAL = 60
+CANVAS_AUTO_REPLY    = False          # True = post AI replies to conversations automatically
+CANVAS_GATEWAY_HOST  = "127.0.0.1"
+CANVAS_GATEWAY_PORT  = 5002
+CANVAS_GATEWAY_DEBUG = False

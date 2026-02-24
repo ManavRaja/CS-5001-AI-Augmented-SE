@@ -72,6 +72,14 @@ class GitHubBackend:
 
     def _load_or_prompt_token(self) -> str:
         key   = f"github_token_{self.username}"
+
+        # 1. config.py takes priority
+        if config.GITHUB_TOKEN:
+            log.info("GitHub token loaded from config.py.")
+            keyring.set_password(KEYRING_APP, key, config.GITHUB_TOKEN)
+            return config.GITHUB_TOKEN
+
+        # 2. fall back to keychain
         token = keyring.get_password(KEYRING_APP, key)
         if token:
             log.info("GitHub token loaded from keychain.")
